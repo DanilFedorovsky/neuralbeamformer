@@ -1,0 +1,18 @@
+10% of S02, no weight update
+
+P5 Mic WER: 0.9953560371517027
+P6 Mic WER: 0.9963880288957688
+Array 1 WER: 1.0
+Array 2 WER: 1.0
+Beamformer WER: 0.9997420020639834
+
+10% of S02, weight update
+
+
+More:
+
+P5 Mic WER: 0.9661016949152542
+P6 Mic WER: 0.847457627118644
+Array 1 WER: 1.0
+Array 2 WER: 1.0
+Beamformer WER: 0.9830508474576272
