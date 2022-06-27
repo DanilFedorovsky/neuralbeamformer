@@ -4,7 +4,7 @@ import numpy as np
 from nara_wpe.wpe import wpe
 import os
 
-# Adjust path to CHiME-5 data directory
+# Adjust paths to CHiME-5 data directory & output path
 datapath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/"
 savepath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Code/Git Repo/data/1WPE/"
 directory = os.fsencode(datapath)
