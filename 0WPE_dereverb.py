@@ -3,18 +3,21 @@ import torchaudio
 import numpy as np
 from nara_wpe.wpe import wpe
 import os
+from tqdm import tqdm
 
 # Adjust paths to CHiME-5 data directory & output path
-datapath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/"
-savepath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Code/Git Repo/data/1WPE/"
-directory = os.fsencode(datapath)
+datapath = "/project/data_asr/CHiME5/data/CHiME5/audio/dev/"
+savepath = "/project/data_asr/CHiME5/data/processed_data/0_WPE"
+# datapath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/"
+# savepath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Code/Git Repo/data/1WPE/"
 
 delay = 5
 iterations = 5
 taps = 10
 alpha=0.9999
 
-for file in os.listdir(directory):
+directory = os.fsencode(datapath)
+for file in tqdm(os.listdir(directory)):
     filename = os.fsdecode(file)
     if filename.endswith(".wav"):
         data, sample_rate = torchaudio.load(datapath+filename)
