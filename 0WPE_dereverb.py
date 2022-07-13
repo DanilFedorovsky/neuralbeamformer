@@ -6,10 +6,10 @@ import os
 from tqdm import tqdm
 
 # Adjust paths to CHiME-5 data directory & output path
-datapath = "/project/data_asr/CHiME5/data/CHiME5/audio/dev/"
-savepath = "/project/data_asr/CHiME5/data/processed_data/0_WPE"
-# datapath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/"
-# savepath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Code/Git Repo/data/1WPE/"
+#datapath = "/project/data_asr/CHiME5/data/CHiME5/audio/dev/"
+#savepath = "/project/data_asr/CHiME5/data/processed_data/0_WPE"
+datapath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/CHiME5/audio/dev/"
+savepath = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/WPE/"
 
 delay = 5
 iterations = 5

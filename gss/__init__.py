@@ -9,3 +9,4 @@ from .complex_angular_central_gaussian import (
 from .utils import (
     _ProbabilisticModel,
 )
+from .mapping import *
