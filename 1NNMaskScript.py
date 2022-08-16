@@ -1,11 +1,13 @@
 import os
 import torchaudio
 import torch
-from torch.nn import Module, Linear, Sigmoid, LSTM, MSELoss, Parameter
+import matplotlib.pyplot as plt
+from torch.nn import Module, Linear, Sigmoid, LSTM, MSELoss
 from torch.optim import Adam
 from pytorch_model_summary import summary
 from tqdm import tqdm
 
+REFERENCE_CHANNEL = 0
 N_PATH = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/noise/free-sound/"
 S_PATH = "/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/LibriSpeech/dev-clean/"
 def load_noise(N_PATH=N_PATH):
@@ -44,7 +46,7 @@ def add_noise_to_speech(speech, noise):
         len_speech = sample.shape[1]
         sample_noise = torch.concat([noise[6],noise[6],noise[6],noise[6]],dim=1)# Repeat to ensure noise is longer than speech
         sample_noise = torch.narrow(sample_noise,1,0,len_speech)# Shorten noise to same length as speech
-        x = torch.add(sample,sample_noise)# Same Ratio 1:1
+        x = torch.add(sample,sample_noise*0.2)# Same Ratio 1:1
         X.append(x)
     return X    
 
@@ -54,7 +56,7 @@ def get_one_noise(speech, noise):# Make Noise 6 same length as respective speech
         len_speech = sample.shape[1]
         sample_noise = torch.concat([noise[6],noise[6],noise[6],noise[6]],dim=1)# Repeat noise to ensure noise is longer than speech
         sample_noise = torch.narrow(sample_noise,1,0,len_speech)# Shorten noise to same length as speech
-        x = sample_noise# Same Ratio 1:1
+        x = sample_noise
         X.append(x)
     return X
 
@@ -81,6 +83,11 @@ for x in X:
     x2 = x*2
     x_new = torch.concat([stft(x),stft(x2)],dim=0) # mel_stft
     stfts_mix.append(x_new)
+
+def prep_xij(trainX,i,j):
+    real_part = trainX[i][j].real
+    imag_part = trainX[i][j].imag
+    return torch.cat((real_part.unsqueeze(2),imag_part.unsqueeze(2)),2)
     
 stfts_clean = []
 for y in speech:
@@ -98,54 +105,66 @@ for n in noise:
         continue
 
 trainX = stfts_mix
-trainY_speech = stfts_clean
-trainY_noise = stfts_noise
-
-def prep_xij(trainX,i,j):
-    real_part = trainX[i][j].real
-    imag_part = trainX[i][j].imag
-    return torch.cat((real_part.unsqueeze(2),imag_part.unsqueeze(2)),2)
 
 print(stfts_clean[0].shape)
 print(stfts_mix[0][0].shape)
 print(stfts_noise[0].shape)
 
+def get_irms(stft_clean, stft_noise):
+    mag_clean = stft_clean.abs() ** 2
+    mag_noise = stft_noise.abs() ** 2
+    irm_speech = mag_clean / (mag_clean + mag_noise)
+    irm_noise = mag_noise / (mag_clean + mag_noise)
+    return irm_speech[REFERENCE_CHANNEL], irm_noise[REFERENCE_CHANNEL]
+    
+trainY = []
+for n in range(0,len(noise)):
+    irm_speech, irm_noise = get_irms(stfts_clean[n].unsqueeze(0), stfts_noise[n].unsqueeze(0))
+    trainY.append(torch.cat((irm_speech.unsqueeze(0),irm_noise.unsqueeze(0)),0))
+
+def plot_mask(mask, title="Mask", xlim=None):
+    mask = mask.detach().numpy()
+    figure, axis = plt.subplots(1, 1)
+    img = axis.imshow(mask, cmap="viridis", origin="lower", aspect="auto")
+    figure.suptitle(title)
+    plt.colorbar(img, ax=axis)
+    plt.show()
+
 # MASK NET
-HIDDEN_SIZE=128 # 128
+HIDDEN_SIZE=64 # 128
 SAMPLE_RATE = 16000
 INPUT_CHANNEL = 2 # Always two -> Real and Imaginary part 
-REFERENCE_CHANNEL = 0
 
-class MultiTaskLossWrapper(Module):
-    # https://towardsdatascience.com/multi-task-learning-with-pytorch-and-fastai-6d10dc7ce855
-    def __init__(self, task_num):
-        super(MultiTaskLossWrapper, self).__init__()
-        self.task_num = task_num
-        self.log_vars = Parameter(torch.zeros((task_num)))
+# class MultiTaskLossWrapper(Module):
+#     # https://towardsdatascience.com/multi-task-learning-with-pytorch-and-fastai-6d10dc7ce855
+#     def __init__(self, task_num):
+#         super(MultiTaskLossWrapper, self).__init__()
+#         self.task_num = task_num
+#         self.log_vars = Parameter(torch.zeros((task_num)))
 
-    def forward(self, preds, y0, y1, y2, y3):
+#     def forward(self, preds, y0, y1, y2, y3):
 
-        mse = MSELoss()
+#         mse = MSELoss()
 
-        loss0 = mse(preds[0][0],y0)
-        loss1 = mse(preds[0][1],y1)
-        loss2 = mse(preds[1][0],y2)
-        loss3 = mse(preds[1][1],y3)
+#         loss0 = mse(preds[0],y0)
+#         loss1 = mse(preds[1],y1)
+#         loss2 = mse(preds[2],y2)
+#         loss3 = mse(preds[3],y3)
 
-        precision0 = torch.exp(-self.log_vars[0])
-        loss0 = precision0*loss0 + self.log_vars[0]
+#         precision0 = torch.exp(-self.log_vars[0])
+#         loss0 = precision0*loss0 + self.log_vars[0]
 
-        precision1 = torch.exp(-self.log_vars[1])
-        loss1 = precision1*loss1 + self.log_vars[1]
+#         precision1 = torch.exp(-self.log_vars[1])
+#         loss1 = precision1*loss1 + self.log_vars[1]
 
-        precision2 = torch.exp(-self.log_vars[2])
-        loss2 = precision2*loss2 + self.log_vars[2]
+#         precision2 = torch.exp(-self.log_vars[2])
+#         loss2 = precision2*loss2 + self.log_vars[2]
 
-        precision3 = torch.exp(-self.log_vars[3])
-        loss3 = precision3*loss3 + self.log_vars[3]
+#         precision3 = torch.exp(-self.log_vars[3])
+#         loss3 = precision3*loss3 + self.log_vars[3]
         
-        print(precision0,precision1,precision2,precision3)
-        return loss0+loss1+loss2+loss3
+#         print(precision0,precision1,precision2,precision3)
+#         return loss0+loss1+loss2+loss3
 
 
 class MaskNet(Module):
@@ -154,12 +173,12 @@ class MaskNet(Module):
         # First subnet for speech prediction
         self.noise = noise
         self.lstm = LSTM(input_size=INPUT_CHANNEL, hidden_size=HIDDEN_SIZE, num_layers=2, bidirectional=True)
-        self.fc = Linear(in_features=HIDDEN_SIZE*2 ,out_features=2)
+        self.fc = Linear(in_features=HIDDEN_SIZE*2 ,out_features=1)
         self.sigmoid = Sigmoid()
         # Second subnet for noise prediction
         self.noise2 = noise
         self.lstm2 = LSTM(input_size=INPUT_CHANNEL, hidden_size=HIDDEN_SIZE, num_layers=2, bidirectional=True)
-        self.fc2 = Linear(in_features=HIDDEN_SIZE*2 ,out_features=2)
+        self.fc2 = Linear(in_features=HIDDEN_SIZE*2 ,out_features=1)
         self.sigmoid2 = Sigmoid()
 
     def forward(self,x):
@@ -167,19 +186,17 @@ class MaskNet(Module):
         y, (h_n, c_n) = self.lstm(x)
         y = self.fc(y).type(torch.double)
         speech_pred = self.sigmoid(y)
-        speech_pred = speech_pred.reshape(2,513,-1)
+        speech_pred = speech_pred.reshape(513,-1).type(torch.float32)
 
         # Noise prediction
-        z, (h_n, c_n) = self.lstm2(x)
-        z = self.fc2(z).type(torch.double)
-        noise_pred = self.sigmoid2(z)
-        noise_pred = noise_pred.reshape(2,513,-1)
+        # z, (h_n, c_n) = self.lstm2(x)
+        # z = self.fc2(z).type(torch.double)
+        # noise_pred = self.sigmoid2(z)
+        # noise_pred = noise_pred.reshape(513,-1).type(torch.float32)
 
-        return speech_pred.type(torch.float32), noise_pred.type(torch.float32)
+        return speech_pred#, noise_pred
 
-print(summary(MaskNet(),torch.zeros((513, 468, 2))))
-
-
+print(summary(MaskNet(),torch.zeros((513, 196, 2))))
 EPOCHS = 1
 NUM_CHANNEL = 2 # Number of Mic Inputs (>=2 for BF)
 REFERENCE_CHANNEL = 0
@@ -191,9 +208,10 @@ LEARN_LOSS_PARAMS = False
 model = MaskNet()#.to(device)
 
 if LEARN_LOSS_PARAMS:
-    mse_wrapper = MultiTaskLossWrapper(task_num=4)
+    pass
+    #mse_wrapper = MultiTaskLossWrapper(task_num=4)
 else:
-    lossMSE = MSELoss() # Better Compare MEL instead MSE for both speech and noise
+    lossMSE = MSELoss() #MSELoss # Better Compare MEL instead MSE for both speech and noise
 #model.type(torch.float)
 
 opt = Adam(model.parameters(), lr=INIT_LR)
@@ -224,18 +242,16 @@ for epoch in range(0, EPOCHS):
     trainY_speech = stfts_clean
     trainY_noise = stfts_noise
 
-    for i in tqdm(range(0,30)):#len(trainX))): # Iterate over Training Examples
+    for i in tqdm(range(0,750)):#len(trainX))): # Iterate over Training Examples
         for j in range(0,NUM_CHANNEL):# + Iterate over channels
-            (x, y_s, y_n) = (prep_xij(trainX,i,j),trainY_speech[i],trainY_noise[i])
-            #(x, y_s, y_n) = (torch.cat((trainX[i][0].unsqueeze(2),trainX[i][1].unsqueeze(2)),2),trainY_speech[i],trainY_noise[i])
-            speech_pred, noise_pred = model(x)
+            (x, y_s, y_n) = (prep_xij(trainX,i,j),trainY[i][0],trainY[i][1])
+            speech_pred=model(x)#, noise_pred = model(x)
             if LEARN_LOSS_PARAMS:
-                loss = mse_wrapper([noise_pred,speech_pred],y_n.real,y_n.imag,y_s.real,y_s.imag)
+                pass
+                #loss = mse_wrapper([speech_pred_real, speech_pred_imag, noise_pred_real, noise_pred_imag],y_n.real,y_n.imag,y_s.real,y_s.imag)
             else:
-                loss = lossMSE(noise_pred[0],y_n.real) + lossMSE(noise_pred[1],y_n.imag) + lossMSE(speech_pred[0], y_s.real) + lossMSE(speech_pred[1], y_s.imag)
-            # print("noise_pred:", noise_pred[0])
-            # print("y_n.real:",y_n.real)
-            print(loss)
+                #noise_pred = torch.ones([513,196])-speech_pred
+                loss = lossMSE(speech_pred,y_s)#+ lossMSE(noise_pred,y_n)
             # zero out the gradients, perform the backpropagation step, and update the weights
             opt.zero_grad()
             loss.backward()
@@ -243,7 +259,7 @@ for epoch in range(0, EPOCHS):
             # add the loss to the total training loss so far and calculate the number of correct predictions
             totalTrainLoss += loss
     PATH = "./modelsaveLibreOneNoise"
-    torch.save(model.state_dict(), PATH + "epoch" + str(epoch) + ".pt")
+    torch.save(model.state_dict(), PATH + "model_epoch" + str(epoch) + ".pt")
     print(totalTrainLoss)
 
 PATH = "./modelsaveLibreOneNoise.pt"
