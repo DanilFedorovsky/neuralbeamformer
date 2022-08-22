@@ -191,12 +191,6 @@ for epoch in range(0, EPOCHS):
     print("Epoch:",str(epoch+1)+"/"+str(EPOCHS))
     # Train Mode
     model.train()
-    
-    # Initialize
-    totalTrainLoss = 0
-    totalValLoss = 0
-    trainCorrect = 0
-    valCorrect = 0
 
     trainX = stfts_mix[:1000]#stfts_mix[:50]
 
@@ -217,18 +211,28 @@ for epoch in range(0, EPOCHS):
             
             H["train_acc"].append(check_accuracy_training(speech_pred,y_s))
             H["train_loss"].append(float(loss))
-            if i % 10 == 0:
-                val_acc, val_loss = check_accuracy_validation(model)
-                H["val_acc"].append(val_acc)
-                H["val_loss"].append(float(val_loss))
-    # Print results of Epoch        
-    print("Average Training Accuracy in Epoch",str(epoch+1),":",np.mean(np.array(H["train_acc"])))
-    print("Total Training Loss in Epoch",str(epoch+1),":",np.sum(np.array(H["train_loss"])))
-    print("Average Validation Accuracy in Epoch",str(epoch+1),":",np.mean(np.array(H["val_acc"])))
-    print("Total Validation Loss in Epoch",str(epoch+1),":",np.sum(np.array(H["val_loss"])))
+        if i % 10 == 0:
+            val_acc, val_loss = check_accuracy_validation(model)
+            H["val_acc"].append(val_acc)
+            H["val_loss"].append(float(val_loss))
+        if i % 50 == 0:
+            print("Average Training Accuracy at Iteration",str(i),":",np.mean(np.array(H["train_acc"])))
+            print("Total Training Loss at Iteration",str(i),":",np.sum(np.array(H["train_loss"])))
+            print("Average Validation Accuracy at Iteration",str(i),":",np.mean(np.array(H["val_acc"])))
+            print("Total Validation Loss at Iteration",str(i),":",np.sum(np.array(H["val_loss"])))
+            # Save
+            PATH = "./modelLibre"
+            torch.save(model.state_dict(), PATH + str(i) + ".pt")
+            # Reset H
+            H = {
+                "train_loss":[],
+                "train_acc":[],
+                "val_loss":[],
+                "val_acc":[]
+            }
+
     # Save Model after Epoch        
-    PATH = "./modelLibre"
-    torch.save(model.state_dict(), PATH + ".pt") #+ "model_epoch" + str(epoch+1)
+    torch.save(model.state_dict(), PATH + "final" + ".pt") #+ "model_epoch" + str(epoch+1)
 
 def evaluateSiSNR(wave, i):
     def si_snr(estimate, reference, epsilon=1e-8):
