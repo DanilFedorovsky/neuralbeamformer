@@ -230,7 +230,7 @@ for epoch in range(0, EPOCHS):
             print("Average Validation Accuracy at Iteration",str(i),":",np.mean(np.array(H["val_acc"])))
             print("Total Validation Loss at Iteration",str(i),":",np.sum(np.array(H["val_loss"])))
             # Save
-            PATH = "./modelLibre"
+            PATH = "/home/dfedorovsky/modelLibre"
             torch.save(model.state_dict(), PATH + str(i) + ".pt")
             #torch.cuda.empty_cache()
             #model = MaskNet()
