@@ -83,7 +83,7 @@ istft = torchaudio.transforms.InverseSpectrogram(n_fft=N_FFT, hop_length=N_HOP)
 
 speech = load_speech()
 noise = load_noise()
-noise = noise[:20]
+noise = noise[:5]
 X, X2, noise = add_noise_to_speech(speech, noise, 0.2, 0.5)
 
 stfts_mix = []
@@ -129,7 +129,7 @@ for n in range(0,len(noise)):
     trainY.append(torch.cat((irm_speech.unsqueeze(0),irm_noise.unsqueeze(0)),0))
 
 # MASK NET
-HIDDEN_SIZE=256 # 256
+HIDDEN_SIZE=200 # 256 (128 is too litte, just learns all 0 or 1)
 SAMPLE_RATE = 16000
 INPUT_CHANNEL = 2 # Always two -> Real and Imaginary part 
 
@@ -144,30 +144,28 @@ class MaskNet(Module):
 
     def forward(self,x):
         # Speech prediction
+        self.lstm.flatten_parameters()
         y, (h_n, c_n) = self.lstm(x)
         y = self.fc(y)
         speech_pred = self.sigmoid(y)
-        return speech_pred.reshape(513,-1)#, noise_pred
+        return speech_pred#, noise_pred
 
 print(summary(MaskNet(),torch.zeros((513, 196, 2))))
 
-CUDA = False
 EPOCHS = 1
-NUM_CHANNEL = 2 # Number of Mic Inputs (>=2 for BF)
+NUM_CHANNEL = 2
+BATCH_SIZE = 1
 REFERENCE_CHANNEL = 0
 INIT_LR = 0.01
-BATCH_SIZE = 1
-LEARN_LOSS_PARAMS = False
 
-# if torch.cuda.is_available()
-device =  torch.device('cuda') if CUDA else torch.device('cpu')
+CUDA = True # if torch.cuda.is_available()
+device =  torch.device("cuda") if torch.cuda.is_available() else torch.device('cpu')
 print("Mounted on:", device)
-model = MaskNet().to(device)
 
 lossBCE = BCELoss()
-
+model = MaskNet().to(device)
+model= torch.nn.DataParallel(model)
 opt = Adam(model.parameters(), lr=INIT_LR)
-
 
 H = {
     "train_loss":[],
@@ -183,7 +181,7 @@ def check_accuracy_training(speech_pred, y_s):
 def check_accuracy_validation(model):
     example_nr = int(np.random.random()*(len(speech)-len(trainX))+len(trainX))
     model.eval()
-    pred = model(prep_xij(stfts_mix,example_nr,0).to(device))
+    pred = model(prep_xij(stfts_mix,example_nr,0).to(device)).reshape(513,-1)
     val_loss = lossBCE(pred,trainY[example_nr][0].to(device))
     pred = (pred>0.15).float()
     model.train()
@@ -202,12 +200,12 @@ for epoch in range(0, EPOCHS):
     trainCorrect = 0
     valCorrect = 0
 
-    trainX = stfts_mix[:1000]#stfts_mix[:50]
+    trainX = stfts_mix[:2000]#stfts_mix[:50]
     trainY = trainY
     for i in tqdm(range(0,len(trainX))): # Iterate over Training Examples
         for j in range(0,NUM_CHANNEL):# Iterate over channels
             (x, y_s, y_n) = (prep_xij(trainX,i,j).to(device),trainY[i][0].to(device),trainY[i][1].to(device))
-            speech_pred=model(x)
+            speech_pred=model(x).reshape(513,-1)
             loss = lossBCE(speech_pred,y_s)
             # zero out the gradients, perform the backpropagation step, and update the weights
             opt.zero_grad()
@@ -220,7 +218,7 @@ for epoch in range(0, EPOCHS):
             val_acc, val_loss = check_accuracy_validation(model)
             H["val_acc"].append(val_acc)
             H["val_loss"].append(float(val_loss))
-        if i % 50 == 0:
+        if i % 100 == 0:
             if i == 0:
                 continue
             # if CUDA:
@@ -230,7 +228,7 @@ for epoch in range(0, EPOCHS):
             print("Average Validation Accuracy at Iteration",str(i),":",np.mean(np.array(H["val_acc"])))
             print("Total Validation Loss at Iteration",str(i),":",np.sum(np.array(H["val_loss"])))
             # Save
-            PATH = "/home/dfedorovsky/modelLibre"
+            PATH = "./models/modelLibre"
             torch.save(model.state_dict(), PATH + str(i) + ".pt")
             #torch.cuda.empty_cache()
             #model = MaskNet()
@@ -242,6 +240,9 @@ for epoch in range(0, EPOCHS):
                 "val_loss":[],
                 "val_acc":[]
             }
+PATH = "./models/modelLibre"
+torch.save(model.state_dict(), PATH + "final" + ".pt")
+
 
 model.eval()
 def evaluateSiSNR(wave, i):
