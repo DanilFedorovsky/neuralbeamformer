@@ -129,7 +129,7 @@ for n in range(0,len(noise)):
     trainY.append(torch.cat((irm_speech.unsqueeze(0),irm_noise.unsqueeze(0)),0))
 
 # MASK NET
-HIDDEN_SIZE=200 # 256 (128 is too litte, just learns all 0 or 1)
+HIDDEN_SIZE=512 # 256 (128 is too litte, just learns all 0 or 1)
 SAMPLE_RATE = 16000
 INPUT_CHANNEL = 2 # Always two -> Real and Imaginary part 
 
