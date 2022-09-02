@@ -253,15 +253,14 @@ for epoch in range(0, EPOCHS):
             print("Total Training Loss at Iteration",str(i),":",np.sum(np.array(H["train_loss"])))
             # print("Average Validation Accuracy at Iteration",str(i),":",np.mean(np.array(H["val_acc"])))
             print("Total Validation Loss at Iteration",str(i),":",np.sum(np.array(H["val_loss"])))
+            # Reset H
+            H = {
+                "train_loss":[],
+                "val_loss":[],
+            }
     # Save
     PATH = "./models/modelLibre"
     torch.save(model.state_dict(), PATH + "epoch"+ str(epoch+1) + ".pt")
-    # Reset H
-    H = {
-        "train_loss":[],
-        "train_acc":[],
-        "val_loss":[],
-        "val_acc":[]
-    }
+
 PATH = "./models/modelLibre"
 torch.save(model.state_dict(), PATH + "final" + ".pt")
