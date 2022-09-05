@@ -18,6 +18,8 @@ THR_S = 0.5 # Threshold for speech IRM
 THR_N = 0.5
 N_PATH = "/project/data_asr/CHiME5/data/librenoise/free-sound/"#"/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/noise/free-sound/"
 S_PATH = "/project/data_asr/CHiME5/data/librenoise/dev/dev-clean/"#"/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/LibriSpeech/dev-clean/"
+MODEL_SAVE_PATH = "/project/data_asr/CHiME5/data/librenoise/models/modelLibre"
+
 def load_noise(N_PATH=N_PATH):
     noise = []
     for file in  os.listdir(N_PATH):
@@ -259,8 +261,6 @@ for epoch in range(0, EPOCHS):
                 "val_loss":[],
             }
     # Save
-    PATH = "./models/modelLibre"
-    torch.save(model.state_dict(), PATH + "epoch"+ str(epoch+1) + ".pt")
+    torch.save(model.state_dict(), MODEL_SAVE_PATH + "epoch"+ str(epoch+1) + ".pt")
 
-PATH = "./models/modelLibre"
-torch.save(model.state_dict(), PATH + "final" + ".pt")
+torch.save(model.state_dict(), MODEL_SAVE_PATH + "final" + ".pt")
