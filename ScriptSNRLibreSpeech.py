@@ -1,6 +1,7 @@
 import os
 import torchaudio
 import torch
+from torchmetrics import SignalNoiseRatio
 import matplotlib.pyplot as plt
 from torch.nn import Module, Linear, Sigmoid, LSTM, BCELoss, MSELoss
 from torch.optim import Adam
@@ -11,6 +12,7 @@ import numpy as np
 import random
 import speechbrain as sb
 from speechbrain.nnet.losses import get_si_snr_with_pitwrapper
+import pickle
 
 REFERENCE_CHANNEL = 0
 SAME_LENGTH = True
@@ -18,8 +20,7 @@ THR_S = 0.5 # Threshold for speech IRM
 THR_N = 0.5
 N_PATH = "/project/data_asr/CHiME5/data/librenoise/free-sound/"#"/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/noise/free-sound/"
 S_PATH = "/project/data_asr/CHiME5/data/librenoise/dev/dev-clean/"#"/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/LibriSpeech/dev-clean/"
-MODEL_SAVE_PATH = "/project/data_asr/CHiME5/data/librenoise/models/modelLibre"
-
+MODEL_SAVE_PATH = "/project/data_asr/CHiME5/data/librenoise/models/"
 def load_noise(N_PATH=N_PATH):
     noise = []
     for file in  os.listdir(N_PATH):
@@ -75,12 +76,12 @@ def prep_xij(trainX,i,j):
 
 speech = load_speech()
 noise = load_noise()
-noise = noise[:5]
-X, X2, noise = add_noise_to_speech(speech, noise, 0.1, 0.3)
+#noise = noise[:5]
+mix1, mix2, noise = add_noise_to_speech(speech, noise, 0.1, 0.3)
 
 print(len(speech), speech[0].shape)
 print(len(noise), noise[0].shape)
-print(len(X), X[0].shape)
+print(len(mix1), mix2[0].shape)
 
 # STFT
 N_FFT = 1024
@@ -94,8 +95,8 @@ stft = torchaudio.transforms.Spectrogram(
 istft = torchaudio.transforms.InverseSpectrogram(n_fft=N_FFT, hop_length=N_HOP)
 
 stfts_mix = []
-for n in range(0,len(X)):
-    x_new = torch.concat([stft(X[n]),stft(X2[n])],dim=0)
+for n in range(0,len(mix1)):
+    x_new = torch.concat([stft(mix1[n]),stft(mix2[n])],dim=0)
     stfts_mix.append(x_new)
 
     
@@ -141,6 +142,7 @@ for i in range(0, len(stfts_mix)):
 
 speech_s = torch.stack(speech)
 noise_s = torch.stack(noise)
+mix1_s = torch.stack(mix1)
 Y = torch.stack(Y)
 X = torch.stack(X_h)
 Y = speech_s # NEW
@@ -170,17 +172,21 @@ class MaskNet(Module):
 
 print(summary(MaskNet(),torch.zeros((2, 196, 513))))
 
-EPOCHS = 10
+EPOCHS = 30
 BATCH_SIZE = 1
 REFERENCE_CHANNEL = 0
 INIT_LR = 0.01
+PICKLE_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/params.pkl'
+MODEL_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/modelLibre'
 
 CUDA = True # if torch.cuda.is_available()
 device =  torch.device("cuda:2") if torch.cuda.is_available() else torch.device('cpu')
 print("Mounted on:", device)
 
-lossBCE = MSELoss()
+#lossBCE = MSELoss()
 #lossSiSNR = get_si_snr_with_pitwrapper([1,],[])
+lossBCE = SignalNoiseRatio().to(device)
+
 model = MaskNet().to(device)
 model= torch.nn.DataParallel(model,device_ids=[2,3])
 opt = Adam(model.parameters(), lr=INIT_LR)
@@ -248,19 +254,21 @@ for epoch in range(0, EPOCHS):
             val_loss = check_accuracy_validation(model)
         #    H["val_acc"].append(val_acc)
             H["val_loss"].append(float(val_loss))
-        if i % 100 == 0:
-            if i == 0:
-                continue
-            #print("Average Training Accuracy at Iteration",str(i),":",np.mean(np.array(H["train_acc"])))
-            print("Total Training Loss at Iteration",str(i),":",np.sum(np.array(H["train_loss"])))
-            # print("Average Validation Accuracy at Iteration",str(i),":",np.mean(np.array(H["val_acc"])))
-            print("Total Validation Loss at Iteration",str(i),":",np.sum(np.array(H["val_loss"])))
-            # Reset H
-            H = {
-                "train_loss":[],
-                "val_loss":[],
-            }
+        # if i % 100 == 0:
+        #     if i == 0:
+        #         continue
+        #     #print("Average Training Accuracy at Iteration",str(i),":",np.mean(np.array(H["train_acc"])))
+        #     # print("Total Training Loss at Iteration",str(i),":",np.sum(np.array(H["train_loss"])))
+        #     # # print("Average Validation Accuracy at Iteration",str(i),":",np.mean(np.array(H["val_acc"])))
+        #     # print("Total Validation Loss at Iteration",str(i),":",np.sum(np.array(H["val_loss"])))
+        #     # # Reset H
+        #     # # H =S {
+        #     #     "train_loss":[],
+        #     #     "val_acc":[]
+        #     # }
     # Save
     torch.save(model.state_dict(), MODEL_SAVE_PATH + "epoch"+ str(epoch+1) + ".pt")
 
 torch.save(model.state_dict(), MODEL_SAVE_PATH + "final" + ".pt")
+with open(PICKLE_SAVE_PATH, 'wb') as f:
+    pickle.dump(H, f)
