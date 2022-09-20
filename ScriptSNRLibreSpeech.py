@@ -20,7 +20,9 @@ THR_S = 0.5 # Threshold for speech IRM
 THR_N = 0.5
 N_PATH = "/project/data_asr/CHiME5/data/librenoise/free-sound/"#"/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/noise/free-sound/"
 S_PATH = "/project/data_asr/CHiME5/data/librenoise/dev/dev-clean/"#"/Users/danilfedorovsky/Documents/10 Collection/00 Studium/00 Letztes Semester/Masterarbeit/Data/LibriSpeech/dev-clean/"
-MODEL_SAVE_PATH = "/project/data_asr/CHiME5/data/librenoise/models/"
+PICKLE_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/params.pkl'
+MODEL_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/modelLibre'
+
 def load_noise(N_PATH=N_PATH):
     noise = []
     for file in  os.listdir(N_PATH):
@@ -176,8 +178,6 @@ EPOCHS = 30
 BATCH_SIZE = 1
 REFERENCE_CHANNEL = 0
 INIT_LR = 0.01
-PICKLE_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/params.pkl'
-MODEL_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/modelLibre'
 
 CUDA = True # if torch.cuda.is_available()
 device =  torch.device("cuda:2") if torch.cuda.is_available() else torch.device('cpu')
