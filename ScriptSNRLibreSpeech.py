@@ -180,7 +180,7 @@ REFERENCE_CHANNEL = 0
 INIT_LR = 0.01
 
 CUDA = True # if torch.cuda.is_available()
-device =  torch.device("cuda:2") if torch.cuda.is_available() else torch.device('cpu')
+device =  torch.device("cuda") if torch.cuda.is_available() else torch.device('cpu')#cuda:2
 print("Mounted on:", device)
 
 #lossBCE = MSELoss()
@@ -188,7 +188,7 @@ print("Mounted on:", device)
 lossBCE = SignalNoiseRatio().to(device)
 
 model = MaskNet().to(device)
-model= torch.nn.DataParallel(model,device_ids=[2,3])
+model= torch.nn.DataParallel(model)#,device_ids=[2,3]
 opt = Adam(model.parameters(), lr=INIT_LR)
 
 H = {
