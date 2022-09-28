@@ -83,6 +83,42 @@ print(len(speech), speech[0].shape)
 print(len(noise), noise[0].shape)
 print(len(mix1), mix2[0].shape)
 
+# STFT
+N_FFT = 1024
+N_HOP = 256
+
+stft = torchaudio.transforms.Spectrogram(
+    n_fft=N_FFT,
+    hop_length=N_HOP,
+    power=None,
+)
+istft = torchaudio.transforms.InverseSpectrogram(n_fft=N_FFT, hop_length=N_HOP)
+
+stfts_mix = []
+for n in range(0,len(mix1)):
+    x_new = torch.concat([stft(mix1[n]),stft(mix2[n])],dim=0)
+    stfts_mix.append(x_new)
+
+    
+stfts_clean = []
+for y in speech:
+    y_new = stft(y)
+    y_new = y_new.reshape(513,-1)
+    stfts_clean.append(y_new)
+
+stfts_noise = []
+i = 0
+for n in noise:
+    try:
+        n_new = stft(n)
+        stfts_noise.append(n_new.reshape(513,-1))
+    except Exception: #sometimes noises are very short, e.g. noise[697]
+        continue
+
+print(stfts_clean[0].shape)
+print(stfts_mix[0][0].shape)
+print(stfts_noise[0].shape)
+
 def get_irms(stft_clean, stft_noise):
     mag_clean = stft_clean.abs() ** 2
     mag_noise = stft_noise.abs() ** 2
