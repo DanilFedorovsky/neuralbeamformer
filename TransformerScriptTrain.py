@@ -2,6 +2,7 @@ import os
 import torchaudio
 import torch
 from torchmetrics import SignalNoiseRatio
+from torchmetrics import ScaleInvariantSignalNoiseRatio
 import matplotlib.pyplot as plt
 from torch.nn import Module, Linear, BCELoss, MSELoss, Conv1d, Conv2d, MaxPool2d, Transformer, LayerNorm, PReLU, Fold, ConvTranspose1d, MultiheadAttention, Dropout
 from torch.optim import Adam
@@ -10,8 +11,6 @@ from pytorch_model_summary import summary
 from tqdm import tqdm
 import numpy as np
 import random
-import speechbrain as sb
-from speechbrain.nnet.losses import get_si_snr_with_pitwrapper
 import pickle
 import math
 
@@ -231,10 +230,10 @@ class TransformerMaskNet(Module):
 
 print(summary(TransformerMaskNet(),torch.zeros((1, ENCODED_TIMESTEPS*8))))
 
-EPOCHS = 30
+EPOCHS = 10
 BATCH_SIZE = 1
 REFERENCE_CHANNEL = 0
-INIT_LR = 0.001#0.000015
+INIT_LR = 0.000015 #0.001 is too high
 PICKLE_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/params.pkl'
 MODEL_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/TF'
 
@@ -242,7 +241,7 @@ CUDA = True # if torch.cuda.is_available()
 device =  torch.device("cuda:2") if torch.cuda.is_available() else torch.device('cpu')
 print("Mounted on:", device)
 
-lossBCE = MSELoss().to(device)
+lossSiSNR = ScaleInvariantSignalNoiseRatio().to(device)
 
 model = TransformerMaskNet().to(device)
 model= torch.nn.DataParallel(model,device_ids=[2])
@@ -255,18 +254,13 @@ H = {
     "val_acc":[]
 }
 
-def check_accuracy_training(speech_pred, y_s):
-    speech_pred = (speech_pred>0.15).float()
-    return float(torch.sum((speech_pred == y_s).float())/torch.sum(torch.ones(513,speech_pred.shape[1])))
-
-def check_accuracy_validation(model):
+def check_validation(model):
     example_nr = int(np.random.random()*(len(speech)-len(trainX))+len(trainX))
     model.eval()
-    pred = model(X[example_nr]).reshape(1,513,-1)
-    val_loss = lossBCE(pred,Y[example_nr][0].unsqueeze(0))
-    pred = (pred>0.15).float()
+    pred = model(X[example_nr])
+    val_loss = lossSiSNR(pred[0],Y[example_nr])
     model.train()
-    return float(torch.sum((pred == Y[example_nr][0]).float())/torch.sum(torch.ones(513,X[example_nr].shape[2])).to(device)),val_loss
+    return float(val_loss)
 
 print("[INFO] training the network...")
 
@@ -288,26 +282,21 @@ for epoch in range(0, EPOCHS):
     for i in tqdm(range(0,len(trainX))): # Iterate over Training Examples
         (x, y) = (trainX[i],trainY[i])
         speech_pred=model(x)
-        loss = lossBCE(speech_pred,y)
+        loss = lossSiSNR(speech_pred[0],y)
         # zero out the gradients, perform the backpropagation step, and update the weights
         opt.zero_grad()
         loss.backward()
         opt.step()
         
-        #H["train_acc"].append(check_accuracy_training(speech_pred,y))
-        #H["train_acc"].append(check_accuracy_training(speech_pred,y))
         H["train_loss"].append(float(loss))
-        #if i % 10 == 0:
-            #val_acc, val_loss = check_accuracy_validation(model)
-            #H["val_acc"].append(val_acc)
-            #H["val_loss"].append(float(val_loss))
-        # if i % 100 == 0:
-        #     if i == 0:
-        #         continue
-        #     print("Average Training Accuracy at Iteration",str(i),":",np.mean(np.array(H["train_acc"])))
-        #     print("Total Training Loss at Iteration",str(i),":",np.sum(np.array(H["train_loss"])))
-        #     print("Average Validation Accuracy at Iteration",str(i),":",np.mean(np.array(H["val_acc"])))
-        #     print("Total Validation Loss at Iteration",str(i),":",np.sum(np.array(H["val_loss"])))
+        if i % 10 == 0:
+            val_loss = check_validation(model)
+            H["val_loss"].append(float(val_loss))
+        if i % 100 == 0:
+            if i == 0:
+                continue
+            print("Total Training Loss at Iteration",str(i),":",(np.sum(np.array(H["train_loss"])))/len(H["train_loss"]))
+            print("Total Validation Loss at Iteration",str(i),":",(np.sum(np.array(H["val_loss"])))/len(H["val_loss"]))
     # Save
     torch.save(model.state_dict(), MODEL_SAVE_PATH + "epoch"+ str(epoch+1) + ".pt")
 
