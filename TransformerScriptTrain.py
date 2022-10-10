@@ -39,7 +39,7 @@ class PositionalEncoding(Module):
         return self.dropout(x)
 
 # TRANSFORMER MASK NET
-NUMBER_OF_SPEAKERS = 2
+NUMBER_OF_SPEAKERS = 1
 ENCODED_TIMESTEPS = int(50000/8) # 50000 is len of training data -> 50000/8 = 6250
 FOLDS = int((ENCODED_TIMESTEPS/250)*2-1)
 FILTERS = 256
@@ -51,27 +51,27 @@ class TransformerMaskNet(Module):
         # ENCODER subnet
         self.tdnn = Conv1d(in_channels=1,out_channels=256,kernel_size=16,stride=8,padding=6)
 
-        self.lnorm = LayerNorm(normalized_shape=(256,ENCODED_TIMESTEPS))
+        self.lnorm = LayerNorm(normalized_shape=(ENCODED_TIMESTEPS))
         self.lin0 = Linear(in_features=256, out_features=256)
 
         self.pe = PositionalEncoding(d_model=256)
         self.pe2 = PositionalEncoding(d_model=250)
-        self.ln11 = LayerNorm(normalized_shape=(250,FOLDS,256))
-        self.ln12 = LayerNorm(normalized_shape=(250,FOLDS,256))
-        self.ln21 = LayerNorm(normalized_shape=(250,FOLDS,256))
-        self.ln22 = LayerNorm(normalized_shape=(250,FOLDS,256))
-        self.ln31 = LayerNorm(normalized_shape=(250,FOLDS,256))
-        self.ln32 = LayerNorm(normalized_shape=(250,FOLDS,256))
-        self.ln41 = LayerNorm(normalized_shape=(250,FOLDS,256))
-        self.ln42 = LayerNorm(normalized_shape=(250,FOLDS,256))
-        self.ln51 = LayerNorm(normalized_shape=(256,FOLDS,250))
-        self.ln52 = LayerNorm(normalized_shape=(256,FOLDS,250))
-        self.ln61 = LayerNorm(normalized_shape=(256,FOLDS,250))
-        self.ln62 = LayerNorm(normalized_shape=(256,FOLDS,250))
-        self.ln71 = LayerNorm(normalized_shape=(256,FOLDS,250))
-        self.ln72 = LayerNorm(normalized_shape=(256,FOLDS,250))
-        self.ln81 = LayerNorm(normalized_shape=(256,FOLDS,250))
-        self.ln82 = LayerNorm(normalized_shape=(256,FOLDS,250))
+        self.ln11 = LayerNorm(normalized_shape=(FOLDS,256))
+        self.ln12 = LayerNorm(normalized_shape=(FOLDS,256))
+        self.ln21 = LayerNorm(normalized_shape=(FOLDS,256))
+        self.ln22 = LayerNorm(normalized_shape=(FOLDS,256))
+        self.ln31 = LayerNorm(normalized_shape=(FOLDS,256))
+        self.ln32 = LayerNorm(normalized_shape=(FOLDS,256))
+        self.ln41 = LayerNorm(normalized_shape=(FOLDS,256))
+        self.ln42 = LayerNorm(normalized_shape=(FOLDS,256))
+        self.ln51 = LayerNorm(normalized_shape=(FOLDS,250))
+        self.ln52 = LayerNorm(normalized_shape=(FOLDS,250))
+        self.ln61 = LayerNorm(normalized_shape=(FOLDS,250))
+        self.ln62 = LayerNorm(normalized_shape=(FOLDS,250))
+        self.ln71 = LayerNorm(normalized_shape=(FOLDS,250))
+        self.ln72 = LayerNorm(normalized_shape=(FOLDS,250))
+        self.ln81 = LayerNorm(normalized_shape=(FOLDS,250))
+        self.ln82 = LayerNorm(normalized_shape=(FOLDS,250))
 
         self.mha1 = MultiheadAttention(embed_dim=256,num_heads=8,dropout=0.1)
         self.mha2 = MultiheadAttention(embed_dim=256,num_heads=8,dropout=0.1)
@@ -135,6 +135,7 @@ class TransformerMaskNet(Module):
         z_2 = z+y
         z = self.ln12(z_2)
         z = self.lintf1(z)
+        z = F.relu(z)
         z = self.lintf12(z)
         x = z+z_2+x
         # Transformer 2
@@ -144,6 +145,7 @@ class TransformerMaskNet(Module):
         z_2 = z+y
         z = self.ln22(z_2)
         z = self.lintf2(z)
+        z = F.relu(z)
         z = self.lintf22(z)
         x = z+z_2+x
         # Transformer 3
@@ -153,6 +155,7 @@ class TransformerMaskNet(Module):
         z_2 = z+y
         z = self.ln32(z_2)
         z = self.lintf3(z)
+        z = F.relu(z)
         z = self.lintf32(z)
         x = z+z_2+x
         # Transformer 4
@@ -162,6 +165,7 @@ class TransformerMaskNet(Module):
         z_2 = z+y
         z = self.ln42(z_2)
         z = self.lintf4(z)
+        z = F.relu(z)
         z = self.lintf42(z)
         x = z+z_2+x
 
@@ -175,6 +179,7 @@ class TransformerMaskNet(Module):
         z_2 = z+y
         z = self.ln52(z_2)
         z = self.lintf5(z)
+        z = F.relu(z)
         z = self.lintf52(z)
         x = z+z_2+x
         # Transformer 6
@@ -184,6 +189,7 @@ class TransformerMaskNet(Module):
         z_2 = z+y
         z = self.ln62(z_2)
         z = self.lintf6(z)
+        z = F.relu(z)
         z = self.lintf62(z)
         x = z+z_2+x
         # Transformer 7
@@ -193,6 +199,7 @@ class TransformerMaskNet(Module):
         z_2 = z+y
         z = self.ln72(z_2)
         z = self.lintf7(z)
+        z = F.relu(z)
         z = self.lintf72(z)
         x = z+z_2+x
         # Transformer 8
@@ -202,6 +209,7 @@ class TransformerMaskNet(Module):
         z_2 = z+y
         z = self.ln82(z_2)
         z = self.lintf8(z)
+        z = F.relu(z)
         z = self.lintf82(z)
         x = z+z_2+x
 
@@ -226,14 +234,12 @@ class TransformerMaskNet(Module):
 
         return x
 
-    
-
 print(summary(TransformerMaskNet(),torch.zeros((1, ENCODED_TIMESTEPS*8))))
 
-EPOCHS = 10
+EPOCHS = 30
+LENX = 2000
 BATCH_SIZE = 1
-REFERENCE_CHANNEL = 0
-INIT_LR = 0.000015 #0.001 is too high
+INIT_LR = 15*10**-5#0.000015 DOESNT WORK #0.001 is too high
 PICKLE_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/params.pkl'
 MODEL_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/TF'
 
@@ -277,9 +283,9 @@ for epoch in range(0, EPOCHS):
 
     X = mix.to(device)
     Y = speech.to(device)
-    trainX = X[:2000]
+    trainX = X[:LENX]
     trainY = Y
-    for i in tqdm(range(0,len(trainX))): # Iterate over Training Examples
+    for i in tqdm(range(0,LENX)): # Iterate over Training Examples
         (x, y) = (trainX[i],trainY[i])
         speech_pred=model(x)
         loss = lossSiSNR(speech_pred[0],y)
@@ -292,13 +298,12 @@ for epoch in range(0, EPOCHS):
         if i % 10 == 0:
             val_loss = check_validation(model)
             H["val_loss"].append(float(val_loss))
-        if i % 100 == 0:
-            if i == 0:
-                continue
-            print("Total Training Loss at Iteration",str(i),":",(np.sum(np.array(H["train_loss"])))/len(H["train_loss"]))
-            print("Total Validation Loss at Iteration",str(i),":",(np.sum(np.array(H["val_loss"])))/len(H["val_loss"]))
+
+    print("Average Training Loss at Epoch",str(epoch+1),":",(sum(H["train_loss"][-LENX:]))/LENX)
+    print("Average Validation Loss at Epoch",str(epoch+1),":",(sum(H["val_loss"][-int(LENX/10):]))/int(LENX/10))
     # Save
     torch.save(model.state_dict(), MODEL_SAVE_PATH + "epoch"+ str(epoch+1) + ".pt")
+    
 
 torch.save(model.state_dict(), MODEL_SAVE_PATH + "final" + ".pt")
 with open(PICKLE_SAVE_PATH, 'wb') as f:
