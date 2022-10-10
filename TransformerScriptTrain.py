@@ -239,7 +239,7 @@ print(summary(TransformerMaskNet(),torch.zeros((1, ENCODED_TIMESTEPS*8))))
 EPOCHS = 30
 LENX = 2000
 BATCH_SIZE = 1
-INIT_LR = 15*10**-5#0.000015 DOESNT WORK #0.001 is too high
+INIT_LR = 15*(10**-4)#-5
 PICKLE_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/params.pkl'
 MODEL_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/TF'
 
