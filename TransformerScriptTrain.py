@@ -231,7 +231,8 @@ class TransformerMaskNet(Module):
         x = x.view(NUMBER_OF_SPEAKERS,256,6250)
         # DECODER
         x = self.convT(x*h)
-
+        x[x > 31.63] = 31.63
+        x[x < -31.63] = -31.63
         return x
 
 print(summary(TransformerMaskNet(),torch.zeros((1, ENCODED_TIMESTEPS*8))))
@@ -288,13 +289,14 @@ for epoch in range(0, EPOCHS):
     for i in tqdm(range(0,LENX)): # Iterate over Training Examples
         (x, y) = (trainX[i],trainY[i])
         speech_pred=model(x)
-        loss = lossSiSNR(speech_pred[0],y)
+        loss = -lossSiSNR(speech_pred[0],y)
         # zero out the gradients, perform the backpropagation step, and update the weights
         opt.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
         opt.step()
         
-        H["train_loss"].append(float(loss))
+        H["train_loss"].append(float(-loss))
         if i % 10 == 0:
             val_loss = check_validation(model)
             H["val_loss"].append(float(val_loss))

@@ -12,7 +12,7 @@ import numpy as np
 import random
 import pickle
 
-def data_loader(y_mask=True):
+def data_loader(y_mask=True, n_noise = -1):
     REFERENCE_CHANNEL = 0
     SAME_LENGTH = True
     THR_S = 0.5 # Threshold for speech IRM
@@ -75,8 +75,9 @@ def data_loader(y_mask=True):
 
     speech = load_speech()
     noise = load_noise()
-    #noise = noise[:5]
-    mix1, mix2, noise = add_noise_to_speech(speech, noise, 0.1, 0.3)
+    if n_noise>0:
+        noise = noise[:n_noise]
+    mix1, mix2, noise = add_noise_to_speech(speech, noise, 0.2, 0.7)
 
     # STFT
     N_FFT = 1024
