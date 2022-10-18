@@ -68,11 +68,6 @@ def data_loader(y_mask=True, n_noise = -1):
             newNoise.append(sample_noise)
         return X, X2, newNoise    
 
-    def prep_xij(trainX,i,j):
-        real_part = trainX[i][j].real
-        imag_part = trainX[i][j].imag
-        return torch.cat((real_part.unsqueeze(2),imag_part.unsqueeze(2)),2)
-
     speech = load_speech()
     noise = load_noise()
     if n_noise>0:
@@ -128,9 +123,10 @@ def data_loader(y_mask=True, n_noise = -1):
     stfts_mix_s = torch.stack(stfts_mix)
 
     for i in range(0, len(stfts_mix)):
-        for j in range (0,1):
-            X_h.append(torch.cat((stfts_mix_s[i][j].real.unsqueeze(0),stfts_mix_s[i][j].imag.unsqueeze(0)),0))
-
+        X_i = []
+        for j in range (0,2):
+            X_i.append(torch.cat((stfts_mix_s[i][j].real.unsqueeze(0),stfts_mix_s[i][j].imag.unsqueeze(0)),0))
+        X_h.append(torch.cat((X_i[0],X_i[1]),0))
     speech_s = torch.stack(speech)
     noise_s = torch.stack(noise)
     mix1_s = torch.stack(mix1)
@@ -138,4 +134,4 @@ def data_loader(y_mask=True, n_noise = -1):
     X = torch.stack(X_h)
     if y_mask == False:
         Y = speech_s # NEW
-    return X,Y,speech_s,noise_s,mix1_s
+    return X,Y,speech_s,noise_s,mix1_s,stfts_mix_s

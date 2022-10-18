@@ -224,9 +224,9 @@ class TransformerMaskNet(Module):
 
 print(summary(TransformerMaskNet(),torch.zeros((2, 513, 196))))
 
-EPOCHS = 10
+EPOCHS = 100
 BATCH_SIZE = 1
-INIT_LR = 0.00001 #0.001 is too high
+INIT_LR = 0.000001 #0.001 is too high
 PICKLE_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/TFMaskparams.pkl'
 MODEL_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/TFMask'
 TRS = 0.5
