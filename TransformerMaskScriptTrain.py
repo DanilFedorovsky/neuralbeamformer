@@ -3,7 +3,7 @@ import torchaudio
 import torch
 from torchmetrics import SignalNoiseRatio
 import matplotlib.pyplot as plt
-from torch.nn import Module,Sigmoid, Linear, BCELoss, MSELoss, Conv1d, Conv2d, MaxPool2d, Transformer, LayerNorm, PReLU, Fold, ConvTranspose1d, MultiheadAttention, Dropout
+from torch.nn import Module,Sigmoid,LSTM, Linear, BCELoss, MSELoss, Conv1d, Conv2d, MaxPool2d, Transformer, LayerNorm, PReLU, Fold, ConvTranspose1d, MultiheadAttention, Dropout
 from torch.optim import Adam
 import torch.nn.functional as F
 from pytorch_model_summary import summary
@@ -13,11 +13,9 @@ import random
 from torchmetrics import ScaleInvariantSignalNoiseRatio
 import pickle
 import math
-
 import DataLoader
 
-X,Y,speech,noise,mix = DataLoader.data_loader()
-
+X,Y,speech,noise,mix,stft_mix = DataLoader.data_loader(n_noise=1)
 class PositionalEncoding(Module):
 
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
@@ -40,7 +38,7 @@ class PositionalEncoding(Module):
         return self.dropout(x)
 
 # TRANSFORMER MASK NET
-NUMBER_OF_SPEAKERS = 2
+NUMBER_OF_SPEAKERS = 4
 ENCODED_TIMESTEPS = int(50000/8) # 50000 is len of training data -> 50000/8 = 6250
 FOLDS = int((ENCODED_TIMESTEPS/250)*2-1)
 FILTERS = 256
@@ -105,7 +103,7 @@ class TransformerMaskNet(Module):
 
         # self.fold = Fold(output_size=(1,ENCODED_TIMESTEPS),kernel_size=(1,250),stride=(1,125))
         self.lin2 = Linear(in_features=196, out_features=196)
-        self.lin3 = Linear(in_features=NUMBER_OF_SPEAKERS, out_features=1)
+        self.lin3 = Linear(in_features=NUMBER_OF_SPEAKERS, out_features=2)
         self.sigmoid = Sigmoid()
         # self.convT = ConvTranspose1d(in_channels=256,out_channels=1,kernel_size=16,stride=8, padding=4)
 
@@ -116,6 +114,8 @@ class TransformerMaskNet(Module):
         # x = y + x
         # y = self.tf2(x,torch.rand(250,FOLDS,256))
         # x = y + x # Residual connection
+        self.lstm = LSTM(input_size=4, hidden_size=64, num_layers=2, bidirectional=True)
+        self.fc = Linear(in_features=128 ,out_features=1)
 
     def forward(self,x):
 
@@ -213,22 +213,23 @@ class TransformerMaskNet(Module):
         x = F.relu(x)
         x = self.lin2(x)
         x = x.view(513,196,NUMBER_OF_SPEAKERS)
-        x = self.lin3(x)
+        #x = self.lin3(x)
         x = F.relu(x)
 
-        x = x.view(513,196)
-
-        x = self.sigmoid(x)
+        x = x.view(513,196,NUMBER_OF_SPEAKERS)
+        y, (h_n, c_n) = self.lstm(x)
+        x = self.fc(y)
+        x = self.sigmoid(x).view(513,196)
         return x
     
 
-print(summary(TransformerMaskNet(),torch.zeros((2, 513, 196))))
+print(summary(TransformerMaskNet(),torch.zeros((4, 513, 196))))
 
-EPOCHS = 100
+EPOCHS = 30
 BATCH_SIZE = 1
-INIT_LR = 0.000001 #0.001 is too high
-PICKLE_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/TFMaskparams.pkl'
-MODEL_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/TFMask'
+INIT_LR = 0.0001 #0.001 is too high
+PICKLE_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/params.pkl'
+MODEL_SAVE_PATH = '/project/data_asr/CHiME5/data/librenoise/models/TFmask'
 TRS = 0.5
 
 CUDA = True # if torch.cuda.is_available()
@@ -275,7 +276,7 @@ for epoch in range(0, EPOCHS):
     trainCorrect = 0
     valCorrect = 0
 
-    trainX = X[:2000].to(device)
+    trainX = stft_mix[:2000].to(device)
     trainY = Y.to(device)
     Y = trainY
     for i in tqdm(range(0,len(trainX))): # Iterate over Training Examples
@@ -294,13 +295,10 @@ for epoch in range(0, EPOCHS):
             val_acc, val_loss = check_accuracy_validation(model)
             H["val_acc"].append(val_acc)
             H["val_loss"].append(float(val_loss))
-        if i % 100 == 0:
-            if i == 0:
-                continue
-            print("Average Training Loss at Iteration",str(i),":",(sum(H["train_loss"][-100:]))/100)
-            print("Average Validation Loss at Iteration",str(i),":",(sum(H["val_loss"][-10:]))/10)
-            print("Average Training Accuracy at Iteration",str(i),":",np.mean(np.array(H["train_acc"])))
-            print("Average Validation Accuracy at Iteration",str(i),":",np.mean(np.array(H["val_acc"])))
+    print("Average Training Loss at Epoch",str(epoch+1),":",(sum(H["train_loss"][-2000:]))/2000)
+    print("Average Validation Loss at Epoch",str(epoch+1),":",(sum(H["val_loss"][-200:]))/200)
+    print("Average Training Accuracy at Epoch",str(epoch+1),":",np.mean(np.array(H["train_acc"])))
+    print("Average Validation Accuracy at Epoch",str(epoch+1),":",np.mean(np.array(H["val_acc"])))
     # Save
     torch.save(model.state_dict(), MODEL_SAVE_PATH + "epoch"+ str(epoch+1) + ".pt")
 
