@@ -121,4 +121,26 @@ def data_loader(y_mask=True, n_noise = -1):
     
     X = torch.stack(stfts_mix)
     Y = torch.stack(trainY)
-    return X,Y,speech,X_e
+
+    # Add second channel to one channel => (513,196,2) -> (513,196,4)
+    def prep_xij(trainX,i,j):
+        real_part = trainX[i][j].real
+        imag_part = trainX[i][j].imag
+        return torch.cat((real_part.unsqueeze(2),imag_part.unsqueeze(2)),2)
+
+    def prep_x(trainX,i):
+        x = []
+        for j in range(0,2):# + Iterate over channels
+            x.append(prep_xij(trainX,i,j))
+        x = torch.stack(x,dim=2)
+        x = x.reshape(513,196,4)
+        return x
+
+    X_4 = []
+    for i in range(0,len(X)):
+        x = X[i]
+        x = prep_x(X,i)
+        X_4.append(x)
+    X_4 = torch.stack(X_4)
+
+    return X_4,Y,speech,X_e, X
