@@ -125,4 +125,4 @@ def data_loader(y_mask=True, n_noise = -1):
     X = torch.stack(X_h)
     if y_mask == False:
         Y = speech_s # NEW
-    return X,Y,speech_s,noise_s,mix1_s,stfts_mix_s
+    return X.view(2703,513,196,4),Y,speech_s,mix1_s,stfts_mix_s#,noise_s,

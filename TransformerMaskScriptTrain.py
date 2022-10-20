@@ -13,9 +13,9 @@ import random
 from torchmetrics import ScaleInvariantSignalNoiseRatio
 import pickle
 import math
-import DataLoader
+import DataLoader.DataLoaderAll as DataLoaderAll
 
-X,Y,speech,noise,mix,stft_mix = DataLoader.data_loader(n_noise=1)
+X,Y,speech,noise,mix,stft_mix = DataLoaderAll.data_loader(n_noise=1)
 class PositionalEncoding(Module):
 
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):

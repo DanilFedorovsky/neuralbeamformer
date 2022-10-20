@@ -14,9 +14,9 @@ import random
 import pickle
 import math
 
-import DataLoader
+import DataLoader.DataLoaderAll as DataLoaderAll
 
-X,Y,speech,noise,mix = DataLoader.data_loader()
+X,Y,speech,noise,mix = DataLoaderAll.data_loader()
 class PositionalEncoding(Module):
 
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):

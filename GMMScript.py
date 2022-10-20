@@ -1,6 +1,6 @@
-import DataLoader
+import DataLoader.DataLoaderAll as DataLoaderAll
 
-X,Y,speech,noise,mix = DataLoader.data_loader()
+X,Y,speech,noise,mix = DataLoaderAll.data_loader()
 from sklearn.mixture import GaussianMixture
 from tqdm import tqdm
 
