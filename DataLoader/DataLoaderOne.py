@@ -45,7 +45,7 @@ def data_loader(y_mask=True, n_noise = -1):
             len_speech = sample.shape[1]
             sample_noise = torch.concat([noise[6],noise[6],noise[6],noise[6]],dim=1)# Repeat to ensure noise is longer than speech
             sample_noise = torch.narrow(sample_noise,1,0,len_speech)# Shorten noise to same length as speech
-            x = torch.add(sample,sample_noise*0.2)# Same Ratio 1:1
+            x = torch.add(sample,sample_noise*0.5)# Same Ratio 1:1
             X.append(x)
         return X    
 
@@ -55,7 +55,7 @@ def data_loader(y_mask=True, n_noise = -1):
             len_speech = sample.shape[1]
             sample_noise = torch.concat([noise[6],noise[6],noise[6],noise[6]],dim=1)# Repeat to ensure noise is longer than speech
             sample_noise = torch.narrow(sample_noise,1,0,len_speech)# Shorten noise to same length as speech
-            x = torch.add(sample,sample_noise*0.5)# Same Ratio 1:1
+            x = torch.add(sample,sample_noise*1.5)# Same Ratio 1:1
             X.append(x)
         return X 
 

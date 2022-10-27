@@ -63,7 +63,7 @@ def data_loader(y_mask=True, n_noise = -1):
     noise = load_noise()
     if n_noise>0:
         noise = noise[:n_noise]
-    mix1, mix2, noise = add_noise_to_speech(speech, noise, 0.2, 0.5)
+    mix1, mix2, noise = add_noise_to_speech(speech, noise, 0.5, 1.5)
 
     # STFT
     N_FFT = 1024
